@@ -31,10 +31,10 @@ class FrontMQWrapper(object):
                                                content_type='application/json',                  
                                                headers = hdrs)        
         self.stopped = False
-        self.receive_thread = threading.Thread(target=self.receive_work)
-        self.receive_thread.start()
         self.send_thread = threading.Thread(target=self.mock_req_generate_work)
         self.send_thread.start()
+        self.receive_thread = threading.Thread(target=self.receive_work)
+        self.receive_thread.start()
 
     def disconnect(self):
         self.stopped = True
@@ -64,9 +64,9 @@ class FrontMQWrapper(object):
 
 
     def callback(self, ch, method, properties, body):
-        print('ch=>%s' % str(ch))
-        print('method=>%s' % str(method))
-        print('properties=>%s' % str(properties))
+        #print('ch=>%s' % str(ch))
+        #print('method=>%s' % str(method))
+        #print('properties=>%s' % str(properties))
         print("body=>%s" % body.decode())
 
 
@@ -75,7 +75,7 @@ class FrontMQWrapper(object):
         self.send_channel = self.send_connection.channel()
         self.send_channel.queue_declare(queue=self.req_queue_name)
         while not self.stopped:
-            msg = 'Req@%s' % datetime.datetime.now().strftime('%H:%M:%S')
+            msg = 'Req@%s' % datetime.datetime.now().strftime('%H:%M:%S.%f')
             self.send_channel.basic_publish(exchange='', routing_key=self.req_queue_name, properties=self.properties, body=msg)
             print('generate[%s] and send out' % msg)
             time.sleep(5)

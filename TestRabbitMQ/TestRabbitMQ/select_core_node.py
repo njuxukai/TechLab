@@ -21,9 +21,10 @@ class ExampleConsumer(object):
     commands that were issued and that should surface in the output as well.
 
     """
-    EXCHANGE = 'message'
+    EXCHANGE = 'private_exchange'
     EXCHANGE_TYPE = 'topic'
-    QUEUE = 'text'
+    QUEUE = 'req_front1'
+    QUEUE2 = 'req_front2'
     ROUTING_KEY = 'example.text'
 
     def __init__(self, amqp_url):
@@ -175,6 +176,7 @@ class ExampleConsumer(object):
         """
         LOGGER.info('Exchange declared')
         self.setup_queue(self.QUEUE)
+        self.setup_queue(self.QUEUE2)
 
     def setup_queue(self, queue_name):
         """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
