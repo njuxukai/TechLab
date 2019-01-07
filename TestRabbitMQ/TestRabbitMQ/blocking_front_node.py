@@ -15,90 +15,74 @@ class FrontMQWrapper(object):
         self.private_exchange_name = private_exchange_name
         self.host = server_ip
         self.stopped = False
-        self.rsp_connection = None
-        self.rsp_channel = None
-        self.private_connection = None
-        self.private_channel = None
-        self.receive_response_thread = None
-        self.receive_private_thread = None
-        self.req_connection = None
-        self.req_channel = None
-        self.mock_req_generate_thread = None
+        self.send_connection = None
+        self.send_channel = None
+        self.send_thread = None
         self.properties = None
+
+        self.receive_connection = None
+        self.receive_channel = None
+        self.receive_thread = None
 
     def connect(self):
         hdrs = {'source_queue': self.req_queue_name,
                 'target_queue' : self.rsp_queue_name}
         self.properties = pika.BasicProperties(app_id='front1',
-                                               content_type='application/json',
-                                               headers = hdrs)
-        self.req_connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        self.req_channel = self.req_connection.channel()
-        self.req_channel.queue_declare(queue=self.req_queue_name)
-        
+                                               content_type='application/json',                  
+                                               headers = hdrs)        
         self.stopped = False
-        self.receive_response_thread = threading.Thread(target=self.receive_private_work)        
-        self.receive_private_thread =  threading.Thread(target=self.receive_response_work)
-        self.receive_response_thread.start()
-        self.receive_private_thread.start()
-
-        self.mock_req_generate_thread = threading.Thread(target=self.mock_req_generate_work)
-        self.mock_req_generate_thread.start()
+        self.receive_thread = threading.Thread(target=self.receive_work)
+        self.receive_thread.start()
+        self.send_thread = threading.Thread(target=self.mock_req_generate_work)
+        self.send_thread.start()
 
     def disconnect(self):
         self.stopped = True
-        if self.mock_req_generate_thread:
-            self.mock_req_generate_thread.join()
-            self.mock_req_generate_thread = None
-        if self.rsp_channel:
-            self.rsp_channel.stop_consuming()
-        if self.rsp_connection:
-            self.rsp_connection.close()
-        if self.private_channel:
-            self.private_channel.stop_consuming()
-        if self.private_connection:
-            self.private_connection.close()
-        if self.receive_private_thread:
-            self.receive_private_thread.join()
-        if self.receive_response_thread:
-            self.receive_response_thread.join()
+        if self.send_channel:
+            self.send_channel.stop_consuming()
+        if self.receive_channel:
+            self.receive_channel.stop_consuming()
+        if self.receive_thread:
+            self.receive_thread.join()
+        if self.send_thread:
+            self.send_thread.join()
 
-    def receive_response_work(self):
-        self.rsp_connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.host))
-        self.rsp_channel = self.rsp_connection.channel()
-        self.rsp_channel.queue_declare(queue=self.rsp_queue_name)
-        self.rsp_channel.basic_consume(functools.partial(self.callback, tag='rsp'), queue=self.rsp_queue_name,no_ack=True)
-        self.rsp_channel.start_consuming()
 
-    def receive_private_work(self):
-        self.private_connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.host))
-        self.private_channel = self.private_connection.channel()
-        self.private_channel.exchange_declare(exchange=self.private_exchange_name, exchange_type='fanout')
-        result = self.private_channel.queue_declare(exclusive=True)
+    def receive_work(self):
+        self.receive_connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.receive_channel = self.receive_connection.channel()
+        #rsp queue
+        self.receive_channel.queue_declare(queue=self.rsp_queue_name)
+        self.receive_channel.basic_consume(self.callback, queue=self.rsp_queue_name,no_ack=True)
+        #private queue
+        self.receive_channel.exchange_declare(exchange=self.private_exchange_name, exchange_type='fanout')
+        result = self.receive_channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        self.private_channel.queue_bind(exchange=self.private_exchange_name, queue=queue_name)
-        self.private_channel.basic_consume(functools.partial(self.callback, tag='private'), queue=queue_name, no_ack=True)
-        self.private_channel.start_consuming()
+        self.receive_channel.queue_bind(exchange=self.private_exchange_name, queue=queue_name)
+        self.receive_channel.basic_consume(self.callback, queue=queue_name, no_ack=True)
+        self.receive_channel.start_consuming()
 
-    def callback(self, ch, method, properties, body, tag):
+
+    def callback(self, ch, method, properties, body):
         print('ch=>%s' % str(ch))
         print('method=>%s' % str(method))
-        print('properties=>%s' % str(property))
-        print("%s@%s" % (tag, body.decode()))
+        print('properties=>%s' % str(properties))
+        print("body=>%s" % body.decode())
 
-    def send_request(self, msg):
-        self.req_channel.basic_publish(exchange='', routing_key=self.req_queue_name, properties=self.properties, body='Hello,world')
 
     def mock_req_generate_work(self):
+        self.send_connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.send_channel = self.send_connection.channel()
+        self.send_channel.queue_declare(queue=self.req_queue_name)
         while not self.stopped:
             msg = 'Req@%s' % datetime.datetime.now().strftime('%H:%M:%S')
-            self.send_request(msg)
+            self.send_channel.basic_publish(exchange='', routing_key=self.req_queue_name, properties=self.properties, body=msg)
             print('generate[%s] and send out' % msg)
             time.sleep(5)
 
 
 if __name__ == '__main__':
-    front_node = FrontMQWrapper(1)
+    front_node = FrontMQWrapper(2)
     front_node.connect()
     while  1 == 1:
         s = input("'c'退出\n")

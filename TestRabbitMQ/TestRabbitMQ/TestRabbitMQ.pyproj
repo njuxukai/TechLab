@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>9598ede7-7098-4208-b10c-d3bd1c03b869</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>TestRabbitMQ.py</StartupFile>
+    <StartupFile>blocking_core_node.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
