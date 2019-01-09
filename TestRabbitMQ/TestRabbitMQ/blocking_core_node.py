@@ -72,12 +72,14 @@ class CoreMQWrapper(object):
                 self.send_channel.basic_publish(exchange = send_task[0], 
                                                 routing_key = send_task[1], 
                                                 properties = send_task[2], 
-                                                body =send_task[3])
+                                                body =send_task[3],
+                                                immediate=False)
             except:
                 pass
 
 
     def callback(self,ch, method, properties, body):
+        print('property[%s]' % str(properties))
         print('body[%s]' %(body.decode())) 
         self.receive_buffer.put((properties, body))
 

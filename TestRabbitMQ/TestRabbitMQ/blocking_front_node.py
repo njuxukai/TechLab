@@ -26,7 +26,8 @@ class FrontMQWrapper(object):
 
     def connect(self):
         hdrs = {'source_queue': self.req_queue_name,
-                'target_queue' : self.rsp_queue_name}
+                'target_queue' : self.rsp_queue_name,
+                'id' : '1'}
         self.properties = pika.BasicProperties(app_id='front1',
                                                content_type='application/json',                  
                                                headers = hdrs)        
@@ -76,7 +77,7 @@ class FrontMQWrapper(object):
         self.send_channel.queue_declare(queue=self.req_queue_name)
         while not self.stopped:
             msg = 'Req@%s' % datetime.datetime.now().strftime('%H:%M:%S.%f')
-            self.send_channel.basic_publish(exchange='', routing_key=self.req_queue_name, properties=self.properties, body=msg)
+            self.send_channel.basic_publish(exchange='', routing_key=self.req_queue_name, properties=self.properties, body=msg, immediate=False)
             print('generate[%s] and send out' % msg)
             time.sleep(5)
 
