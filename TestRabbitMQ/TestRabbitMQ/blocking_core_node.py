@@ -80,7 +80,7 @@ class CoreMQWrapper(object):
 
     def callback(self,ch, method, properties, body):
         print('property[%s]' % str(properties))
-        print('body[%s]' %(body.decode())) 
+        #print('body[%s]' %(body.decode())) 
         self.receive_buffer.put((properties, body))
 
     def process_db_work(self):
@@ -92,15 +92,17 @@ class CoreMQWrapper(object):
                 pass
 
     def process_request(self, properties, body):
+        #print('properties----->>>%s' % str(properties))
         dt_str = datetime.datetime.now().strftime('%H:%M:%S.%f')
-        rsp_msg = 'Response@%s[%s]' % (dt_str, body.decode())
-        private_msg = 'Private@%s[%s]' % (dt_str, body.decode())
+        #rsp_msg = 'Response@%s[%s]' % (dt_str, body.decode())
+        #private_msg = 'Private@%s[%s]' % (dt_str, body.decode())
         send_properties = pika.BasicProperties(app_id='db_core', 
                                                content_type='application/json', 
                                                headers = properties.headers)
         if 'target_queue' in properties.headers:
-            self.send_buffer.put(('', properties.headers['target_queue'], send_properties, rsp_msg))
-        self.send_buffer.put((self.private_exchange_name, '', send_properties, private_msg))
+            print('Rsp------------------------->%s' % properties.headers['target_queue'])
+            #self.send_buffer.put(('', properties.headers['target_queue'], send_properties, rsp_msg))
+        #self.send_buffer.put((self.private_exchange_name, '', send_properties, private_msg))
 
 
 if __name__ == '__main__':
